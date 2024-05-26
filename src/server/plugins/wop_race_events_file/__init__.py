@@ -11,11 +11,12 @@ class WOPRaceEventsFile:
         # Save current date and time
         current_time = datetime.datetime.now()
 
-        # Save heat in CSV file
-        filename = "race-events-" + current_time.strftime("%Y-%m-%d.csv")
+        # Save heat in CSV file     
+        filename = "static/race-events/" + event["_eventName"] + "_" + current_time.strftime("%Y-%m-%d.csv")
+                
         with open(filename, mode='a', newline='') as file:
             writer = csv.writer(file)
-            writer.writerow([current_time.date(), current_time.time(), heat.display_name, event["_eventName"]])
+            writer.writerow([current_time.strftime("%H:%M:%S.%f"), "'" + event["_eventName"] + "'", "'" + heat.display_name + "'"])
 
 def initialize(rhapi):
     es = WOPRaceEventsFile(rhapi)
