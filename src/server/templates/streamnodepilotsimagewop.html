@@ -23,14 +23,28 @@ Pilot details stream overlay
 
     });
 
+    async function updatePilotInfo(pilot_data) {
+        html_element = $('#pilot-image')
+        html_element.find('.photo_container').empty();
+
+        if (!pilot_data.pilot ) {
+            html_element.hide();
+            return
+        }
+        const photo = pilot_data.pilot.photo;
+        html_element.show();
+
+        html_element.attr('src', photo);
+    }
+
     async function updateNodeData() {
 
         const status_data = await fetchRHData("status")
         const heat_data = await  fetchRHData("heat/" + status_data.status.state.current_heat)
         const pilot_data = await fetchRHData("pilot/" + heat_data.heat.setup.nodes_pilots[node_id])
-        console.log(pilot_data)
 
-        $('#pilot-image').attr('src', pilot_data.pilot.photo);
+        updatePilotInfo(pilot_data)
+
 
     }
 
