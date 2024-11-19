@@ -77,9 +77,11 @@
 			html_element = $('#spotters').find('#pilot_'+node_id);
 		}
 		html_element.find('.photo_container').empty();
-		console.log(pilot_data);
+		const no_spotter_class = 'blinking-text'
 		if (!pilot_data.pilot) {
-			html_element.find('.pilot-name-container').find('.pilot-name').html('BRAK SPOTERA');
+			pilot_element = html_element.find('.pilot-name-container').find('.pilot-name')
+			pilot_element.html('BRAK SPOTERA');
+			pilot_element.addClass(no_spotter_class);
 			return
 		}
 		var callsign = pilot_data.pilot.callsign;
@@ -87,6 +89,7 @@
 		html_element.find('.pilot-name-container').show();
 
 		html_element.find('.pilot-name-container').find('.pilot-name').html(callsign);
+		html_element.find('.pilot-name-container').find('.pilot-name').removeClass(no_spotter_class);
 
 
 	}
@@ -180,6 +183,20 @@
 		;
 
 </script>
+<style>
+	@keyframes blink {
+		0% { opacity: 1; }
+		50% { opacity: 0; }
+		100% { opacity: 1; }
+	}
+	.blinking-text {
+		text-align: center;
+		margin-top: 20%;
+		font-size: 24px;
+		color: green;
+		animation: blink 1s infinite;
+	}
+</style>
 {% endblock %} {% block content %}
 <main style="background-color: #202020;">
 	<!--Display the race leaderboard-->
