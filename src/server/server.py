@@ -519,6 +519,11 @@ def render_stream_heat(heat_id):
         heat_id=heat_id
     )
 
+@APP.route('/wop/stream/heat')
+def render_stream_next_heat():
+    '''Route to heat display for streaming.'''
+    return render_template('streamheatwopv2.html', serverInfo=serverInfo, getOption=RaceContext.rhdata.get_option, __=__)
+
 @APP.route('/stream/heatwop/<int:heat_id>')
 def render_stream_heat_wop(heat_id):
     '''Route to heat display for streaming.'''
