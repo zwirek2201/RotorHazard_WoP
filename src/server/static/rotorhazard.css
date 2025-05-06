@@ -2709,6 +2709,11 @@ button.color-picker {
 	max-width: 43em;
 }
 
+.tuning-detail.popup {
+	width: 95%;
+	max-width: 95%;
+}
+
 /* ************* */
 /* Print Styling */
 /* ************* */

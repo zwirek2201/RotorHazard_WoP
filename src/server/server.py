@@ -362,6 +362,26 @@ def render_run():
         nodes=nodes,
         cluster_has_secondaries=(RaceContext.cluster and RaceContext.cluster.hasSecondaries()))
 
+@APP.route('/run-ferus')
+@requires_auth
+def render_run_ferus():
+    '''Route to race management page.'''
+    frequencies = [node.frequency for node in RaceContext.interface.nodes]
+    nodes = []
+    for idx, freq in enumerate(frequencies):
+        if freq:
+            nodes.append({
+                'freq': freq,
+                'index': idx
+            })
+
+    return render_template('runFerus.html', serverInfo=serverInfo, getOption=RaceContext.rhdata.get_option, __=__,
+        led_enabled=(RaceContext.led_manager.isEnabled() or (RaceContext.cluster and RaceContext.cluster.hasRecEventsSecondaries())),
+        vrx_enabled=RaceContext.vrx_manager.isEnabled(),
+        num_nodes=RaceContext.race.num_nodes,
+        nodes=nodes,
+        cluster_has_secondaries=(RaceContext.cluster and RaceContext.cluster.hasSecondaries()))
+
 @APP.route('/wop/stream/node-image/<int:node_id>')
 def render_stream_pilot(node_id):
         position = request.args.get('position')
