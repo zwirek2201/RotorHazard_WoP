@@ -343,7 +343,6 @@ def render_results():
     return render_template('results.html', serverInfo=serverInfo, getOption=RaceContext.rhdata.get_option, __=__, Debug=Config.GENERAL['DEBUG'])
 
 @APP.route('/run')
-@requires_auth
 def render_run():
     '''Route to race management page.'''
     frequencies = [node.frequency for node in RaceContext.interface.nodes]
@@ -363,7 +362,6 @@ def render_run():
         cluster_has_secondaries=(RaceContext.cluster and RaceContext.cluster.hasSecondaries()))
 
 @APP.route('/run-ferus')
-@requires_auth
 def render_run_ferus():
     '''Route to race management page.'''
     frequencies = [node.frequency for node in RaceContext.interface.nodes]
@@ -977,6 +975,11 @@ def on_load_data(data):
 @catchLogExceptionsWrapper
 def on_broadcast_message(data):
     RaceContext.rhui.emit_priority_message(data['message'], data['interrupt'])
+
+@SOCKET_IO.on('race_data')
+@catchLogExceptionsWrapper
+def on_race_data(data):
+    RaceContext.rhui.emit_race_data(data['race_id'])
 
 # Settings socket io events
 
@@ -2308,6 +2311,7 @@ def on_stage_race(data=None):
 
         RaceContext.race.start_time_epoch_ms = monotonic_to_epoch_millis(RaceContext.race.start_time_monotonic)
         RaceContext.race.start_token = random.random()
+        RaceContext.race.start_time_unix = monotonic_to_epoch_millis(RaceContext.race.start_time_monotonic)
         gevent.spawn(race_start_thread, RaceContext.race.start_token)
 
         eventPayload = {
@@ -2732,6 +2736,7 @@ def do_save_actions():
         'format_id': RaceContext.race.format.id if hasattr(RaceContext.race.format, 'id') else RHUtils.FORMAT_ID_NONE,
         'start_time': RaceContext.race.start_time_monotonic,
         'start_time_formatted': RaceContext.race.start_time.strftime("%Y-%m-%d %H:%M:%S"),
+        'start_time_unix': RaceContext.race.start_time_unix
         }
 
     new_race = RaceContext.rhdata.add_savedRaceMeta(new_race_data)
@@ -2831,7 +2836,8 @@ def on_resave_laps(data):
             'lap_time': lap['lap_time'],
             'lap_time_formatted': tmp_lap_time_formatted,
             'source': lap['source'],
-            'deleted': lap['deleted']
+            'deleted': lap['deleted'],
+            'lap_time_stamp_unix': 0
             })
 
     RaceContext.rhdata.replace_savedRaceLaps(new_racedata)
@@ -2850,6 +2856,9 @@ def on_resave_laps(data):
         'heat_id': heat_id,
         'round_id': round_id,
     }
+
+    SOCKET_IO.emit('race_updated', new_racedata)
+    
     gevent.spawn(build_atomic_result_caches, params)
 
     Events.trigger(Evt.LAPS_RESAVE, {
@@ -3356,7 +3365,8 @@ def get_pilotrace(data):
                     'lap_time': lap.lap_time,
                     'lap_time_formatted': lap.lap_time_formatted,
                     'source': lap.source,
-                    'deleted': lap.deleted
+                    'deleted': lap.deleted,
+                    'lap_time_stamp_unix': lap.lap_time_stamp_unix
                 })
 
         pilot_data = RaceContext.rhdata.get_pilot(pilotrace.pilot_id)
@@ -3499,11 +3509,21 @@ def heartbeat_thread_function():
     '''Emits current rssi data, etc'''
     gevent.sleep(0.010)  # allow time for connection handshake to terminate before emitting data
 
+    batch_heartbeat_data = []
+    batch_heartbeat_threshold = 50
+    
     while True:
         try:
             node_data = RaceContext.interface.get_heartbeat_json()
 
             SOCKET_IO.emit('heartbeat', node_data)
+
+            batch_heartbeat_data.append(node_data)
+
+            if (len(batch_heartbeat_data) >= batch_heartbeat_threshold):
+                SOCKET_IO.emit('batch_heartbeat', batch_heartbeat_data)
+                batch_heartbeat_data = []
+
             heartbeat_thread_function.iter_tracker += 1
 
             # update displayed IMD rating after freqs changed:
@@ -3759,7 +3779,8 @@ def do_pass_record_callback(node, lap_timestamp_absolute, source):
                             'lap_time_formatted': lap_time_fmtstr,
                             'source': source,
                             'deleted': lap_late_flag,  # delete if lap pass is after race winner declared
-                            'late_lap': lap_late_flag
+                            'late_lap': lap_late_flag,
+                            'lap_time_stamp_unix': monotonic_to_epoch_millis(monotonic())
                         }
                         RaceContext.race.node_laps[node.index].append(lap_data)
 

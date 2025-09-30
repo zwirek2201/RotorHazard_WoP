@@ -33,6 +33,7 @@ class RHRace():
         self.start_time = 0 # datetime
         self.start_time_monotonic = 0
         self.start_time_epoch_ms = 0 # ms since 1970-01-01
+        self.start_time_unix = 0
         self.node_laps = {} # current race lap objects, by node
         self.node_has_finished = {}
         self.any_races_started = False

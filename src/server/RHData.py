@@ -2671,6 +2671,9 @@ class RHData():
     def get_savedRaceMetas_by_heat(self, heat_id):
         return self._Database.SavedRaceMeta.query.filter_by(heat_id=heat_id).order_by(self._Database.SavedRaceMeta.round_id).all()
 
+    def get_savedRaceMeta_by_race(self, race_id):
+        return self._Database.SavedRaceMeta.query.filter_by(id=race_id).one()
+
     def get_savedRaceMetas_by_raceClass(self, class_id):
         return self._Database.SavedRaceMeta.query.filter_by(class_id=class_id).order_by(self._Database.SavedRaceMeta.round_id).all()
 
@@ -2691,6 +2694,7 @@ class RHData():
             format_id=data['format_id'],
             start_time=data['start_time'],
             start_time_formatted=data['start_time_formatted'],
+            start_time_unix=data['start_time_unix'],
             _cache_status=json.dumps({
                 'data_ver': monotonic(),
                 'build_ver': None
@@ -2936,7 +2940,8 @@ class RHData():
                 lap_time=lap['lap_time'],
                 lap_time_formatted=lap['lap_time_formatted'],
                 source = lap['source'],
-                deleted = lap['deleted']
+                deleted = lap['deleted'],
+                lap_time_stamp_unix = lap['lap_time_stamp_unix']
             ))
 
         self.commit()
@@ -2971,7 +2976,8 @@ class RHData():
                     lap_time=lap['lap_time'],
                     lap_time_formatted=lap['lap_time_formatted'],
                     source=lap['source'],
-                    deleted=lap['deleted']
+                    deleted=lap['deleted'],
+                    lap_time_stamp_unix = lap['lap_time_stamp_unix']
                 ))
 
         self.commit()

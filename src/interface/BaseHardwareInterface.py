@@ -1,6 +1,7 @@
 import gevent
 import logging
 from monotonic import monotonic
+import time
 
 ENTER_AT_PEAK_MARGIN = 5 # closest that captured enter-at level can be to node peak RSSI
 CAP_ENTER_EXIT_AT_MILLIS = 3000  # number of ms for capture of enter/exit-at levels
@@ -189,7 +190,9 @@ class BaseHardwareInterface(object):
             'current_rssi': [node.current_rssi for node in self.nodes],
             'frequency': [node.frequency for node in self.nodes],
             'loop_time': [node.loop_time for node in self.nodes],
-            'crossing_flag': [node.crossing_flag for node in self.nodes]
+            'crossing_flag': [node.crossing_flag for node in self.nodes],
+            'current_time': int( time.time_ns() / 1000000 )
+            
         }
         for i, node in enumerate(self.nodes):
             if node.scan_enabled:

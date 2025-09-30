@@ -51,6 +51,7 @@ class RaceContext():
         self.last_race.start_time = self.race.start_time
         self.last_race.start_time_monotonic = self.race.start_time_monotonic
         self.last_race.start_time_epoch_ms = self.race.start_time_epoch_ms
+        self.last_race.start_time_unix = self.race.start_time_unix
         self.last_race.node_laps = self.race.node_laps
         self.last_race.node_has_finished = self.race.node_has_finished
         self.last_race.any_races_started = self.race.any_races_started
