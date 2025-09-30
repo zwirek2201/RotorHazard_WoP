@@ -169,8 +169,7 @@ def createBlueprint(RaceContext, serverInfo):
             })
 
         payload = {
-            "heats": heats,
-            "leaderboard": Results.calc_leaderboard(RaceContext.rhdata)
+            "heats": heats
         }
 
         return json.dumps({"races": payload}, cls=AlchemyEncoder), 201, {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'}

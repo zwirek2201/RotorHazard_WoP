@@ -15,6 +15,9 @@ import gevent
 import RHUtils
 from RHUtils import catchLogExceptionsWrapper
 from Database import ProgramMethod
+from monotonic import monotonic
+import time
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -292,7 +295,8 @@ class RHUI():
                 'hide_stage_timer': race_format.start_delay_min_ms != race_format.start_delay_max_ms,
                 'pi_starts_at_s': self._racecontext.race.start_time_monotonic,
                 'pi_staging_at_s': self._racecontext.race.stage_time_monotonic,
-                'next_round': self._racecontext.rhdata.get_max_round(heat_id) + 1
+                'next_round': self._racecontext.rhdata.get_max_round(heat_id) + 1,
+                'current_time': int( time.time_ns() / 1000000 )
             }
         if ('nobroadcast' in params):
             emit('race_status', emit_payload)
@@ -572,6 +576,7 @@ class RHUI():
                         'format_id': race.format_id,
                         'start_time': race.start_time,
                         'start_time_formatted': race.start_time_formatted,
+                        'start_time_unix': race.start_time_unix,
                         'pilotraces': pilotraces
                     }
                 heats[heat.id] = {
@@ -590,6 +595,41 @@ class RHUI():
             emit('race_list', emit_payload)
         else:
             self._socket.emit('race_list', emit_payload)
+
+    def emit_race_data(self, race_id, **params):
+        '''Emits race listing'''
+
+        race = self._racecontext.rhdata.get_savedRaceMeta_by_race(race_id)
+          
+        pilotraces = []
+        for pilotrace in self._racecontext.rhdata.get_savedPilotRaces_by_savedRaceMeta(race.id):
+            pilot_data = self._racecontext.rhdata.get_pilot(pilotrace.pilot_id)
+            if pilot_data:
+                nodepilot = pilot_data.callsign
+            else:
+                nodepilot = None
+
+            pilotraces.append({
+                'pilotrace_id': pilotrace.id,
+                'callsign': nodepilot,
+                'pilot_id': pilotrace.pilot_id,
+                'node_index': pilotrace.node_index,
+            })
+
+        emit_payload = {
+            'race_id': race.id,
+            'class_id': race.class_id,
+            'format_id': race.format_id,
+            'start_time': race.start_time,
+            'start_time_formatted': race.start_time_formatted,
+            'start_time_unix': race.start_time_unix,
+            'pilotraces': pilotraces
+        }
+
+        if ('nobroadcast' in params):
+            emit('race_data', emit_payload)
+        else:
+            self._socket.emit('race_data', emit_payload)
 
     def emit_result_data(self, **params):
         ''' kick off non-blocking thread to generate data'''

@@ -236,6 +236,7 @@ class SavedRaceMeta(DB.Model):
     format_id = DB.Column(DB.Integer, DB.ForeignKey("race_format.id"), nullable=False)
     start_time = DB.Column(DB.Integer, nullable=False) # internal monotonic time
     start_time_formatted = DB.Column(DB.String, nullable=False) # local human-readable time
+    start_time_unix = DB.Column(DB.Integer, nullable=True)
     results = DB.Column(DB.PickleType, nullable=True)
     _cache_status = DB.Column('cacheStatus', DB.String(16), nullable=False)
 
@@ -285,6 +286,7 @@ class SavedRaceLap(DB.Model):
     lap_time_formatted = DB.Column(DB.String, nullable=False)
     source = DB.Column(DB.Integer, nullable=False)
     deleted = DB.Column(DB.Boolean, nullable=False)
+    lap_time_stamp_unix = DB.Column(DB.Integer, nullable=True)
 
     def __repr__(self):
         return '<SavedRaceLap %r>' % self.id

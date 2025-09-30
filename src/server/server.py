@@ -331,13 +331,18 @@ def render_event_heat(heat_id):
         heat_id=heat_id
     )
 
+@APP.route('/wop/nextheat')
+def render_next_heat_poster():
+    '''Route to heat display for event management.'''
+    return render_template('eventheatwopv2.html', serverInfo=serverInfo, getOption=RaceContext.rhdata.get_option, __=__)
+
+
 @APP.route('/results')
 def render_results():
     '''Route to round summary page.'''
     return render_template('results.html', serverInfo=serverInfo, getOption=RaceContext.rhdata.get_option, __=__, Debug=Config.GENERAL['DEBUG'])
 
 @APP.route('/run')
-@requires_auth
 def render_run():
     '''Route to race management page.'''
     frequencies = [node.frequency for node in RaceContext.interface.nodes]
@@ -350,6 +355,50 @@ def render_run():
             })
 
     return render_template('run.html', serverInfo=serverInfo, getOption=RaceContext.rhdata.get_option, __=__,
+        led_enabled=(RaceContext.led_manager.isEnabled() or (RaceContext.cluster and RaceContext.cluster.hasRecEventsSecondaries())),
+        vrx_enabled=RaceContext.vrx_manager.isEnabled(),
+        num_nodes=RaceContext.race.num_nodes,
+        nodes=nodes,
+        cluster_has_secondaries=(RaceContext.cluster and RaceContext.cluster.hasSecondaries()))
+
+@APP.route('/run-ferus')
+def render_run_ferus():
+    '''Route to race management page.'''
+    frequencies = [node.frequency for node in RaceContext.interface.nodes]
+    nodes = []
+    for idx, freq in enumerate(frequencies):
+        if freq:
+            nodes.append({
+                'freq': freq,
+                'index': idx
+            })
+
+    return render_template('runFerus.html', serverInfo=serverInfo, getOption=RaceContext.rhdata.get_option, __=__,
+        led_enabled=(RaceContext.led_manager.isEnabled() or (RaceContext.cluster and RaceContext.cluster.hasRecEventsSecondaries())),
+        vrx_enabled=RaceContext.vrx_manager.isEnabled(),
+        num_nodes=RaceContext.race.num_nodes,
+        nodes=nodes,
+        cluster_has_secondaries=(RaceContext.cluster and RaceContext.cluster.hasSecondaries()))
+
+@APP.route('/wop/stream/node-image/<int:node_id>')
+def render_stream_pilot(node_id):
+        position = request.args.get('position')
+        return render_template('streamnodepilotsimagewop.html', serverInfo=serverInfo, getOption=RaceContext.rhdata.get_option, __=__, node_id=node_id, pos=position)
+
+@APP.route('/wop/run')
+@requires_auth
+def render_runwop():
+    '''Route to race management page.'''
+    frequencies = [node.frequency for node in RaceContext.interface.nodes]
+    nodes = []
+    for idx, freq in enumerate(frequencies):
+        if freq:
+            nodes.append({
+                'freq': freq,
+                'index': idx
+            })
+
+    return render_template('runRace.html', serverInfo=serverInfo, getOption=RaceContext.rhdata.get_option, __=__,
         led_enabled=(RaceContext.led_manager.isEnabled() or (RaceContext.cluster and RaceContext.cluster.hasRecEventsSecondaries())),
         vrx_enabled=RaceContext.vrx_manager.isEnabled(),
         num_nodes=RaceContext.race.num_nodes,
@@ -487,6 +536,11 @@ def render_stream_heat(heat_id):
         num_nodes=RaceContext.race.num_nodes,
         heat_id=heat_id
     )
+
+@APP.route('/wop/stream/heat')
+def render_stream_next_heat():
+    '''Route to heat display for streaming.'''
+    return render_template('streamheatwopv2.html', serverInfo=serverInfo, getOption=RaceContext.rhdata.get_option, __=__)
 
 @APP.route('/stream/heatwop/<int:heat_id>')
 def render_stream_heat_wop(heat_id):
@@ -921,6 +975,11 @@ def on_load_data(data):
 @catchLogExceptionsWrapper
 def on_broadcast_message(data):
     RaceContext.rhui.emit_priority_message(data['message'], data['interrupt'])
+
+@SOCKET_IO.on('race_data')
+@catchLogExceptionsWrapper
+def on_race_data(data):
+    RaceContext.rhui.emit_race_data(data['race_id'])
 
 # Settings socket io events
 
@@ -2252,6 +2311,7 @@ def on_stage_race(data=None):
 
         RaceContext.race.start_time_epoch_ms = monotonic_to_epoch_millis(RaceContext.race.start_time_monotonic)
         RaceContext.race.start_token = random.random()
+        RaceContext.race.start_time_unix = monotonic_to_epoch_millis(RaceContext.race.start_time_monotonic)
         gevent.spawn(race_start_thread, RaceContext.race.start_token)
 
         eventPayload = {
@@ -2676,6 +2736,7 @@ def do_save_actions():
         'format_id': RaceContext.race.format.id if hasattr(RaceContext.race.format, 'id') else RHUtils.FORMAT_ID_NONE,
         'start_time': RaceContext.race.start_time_monotonic,
         'start_time_formatted': RaceContext.race.start_time.strftime("%Y-%m-%d %H:%M:%S"),
+        'start_time_unix': RaceContext.race.start_time_unix
         }
 
     new_race = RaceContext.rhdata.add_savedRaceMeta(new_race_data)
@@ -2775,7 +2836,8 @@ def on_resave_laps(data):
             'lap_time': lap['lap_time'],
             'lap_time_formatted': tmp_lap_time_formatted,
             'source': lap['source'],
-            'deleted': lap['deleted']
+            'deleted': lap['deleted'],
+            'lap_time_stamp_unix': 0
             })
 
     RaceContext.rhdata.replace_savedRaceLaps(new_racedata)
@@ -2794,6 +2856,9 @@ def on_resave_laps(data):
         'heat_id': heat_id,
         'round_id': round_id,
     }
+
+    SOCKET_IO.emit('race_updated', new_racedata)
+    
     gevent.spawn(build_atomic_result_caches, params)
 
     Events.trigger(Evt.LAPS_RESAVE, {
@@ -3300,7 +3365,8 @@ def get_pilotrace(data):
                     'lap_time': lap.lap_time,
                     'lap_time_formatted': lap.lap_time_formatted,
                     'source': lap.source,
-                    'deleted': lap.deleted
+                    'deleted': lap.deleted,
+                    'lap_time_stamp_unix': lap.lap_time_stamp_unix
                 })
 
         pilot_data = RaceContext.rhdata.get_pilot(pilotrace.pilot_id)
@@ -3443,11 +3509,21 @@ def heartbeat_thread_function():
     '''Emits current rssi data, etc'''
     gevent.sleep(0.010)  # allow time for connection handshake to terminate before emitting data
 
+    batch_heartbeat_data = []
+    batch_heartbeat_threshold = 50
+    
     while True:
         try:
             node_data = RaceContext.interface.get_heartbeat_json()
 
             SOCKET_IO.emit('heartbeat', node_data)
+
+            batch_heartbeat_data.append(node_data)
+
+            if (len(batch_heartbeat_data) >= batch_heartbeat_threshold):
+                SOCKET_IO.emit('batch_heartbeat', batch_heartbeat_data)
+                batch_heartbeat_data = []
+
             heartbeat_thread_function.iter_tracker += 1
 
             # update displayed IMD rating after freqs changed:
@@ -3703,7 +3779,8 @@ def do_pass_record_callback(node, lap_timestamp_absolute, source):
                             'lap_time_formatted': lap_time_fmtstr,
                             'source': source,
                             'deleted': lap_late_flag,  # delete if lap pass is after race winner declared
-                            'late_lap': lap_late_flag
+                            'late_lap': lap_late_flag,
+                            'lap_time_stamp_unix': monotonic_to_epoch_millis(monotonic())
                         }
                         RaceContext.race.node_laps[node.index].append(lap_data)
 
