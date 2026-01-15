@@ -25,6 +25,7 @@ venv
 
 # Plugins, except bundled and README
 /src/server/plugins/*
+!/src/server/plugins/wop_*
 !/src/server/plugins/rh_*
 !/src/server/plugins/README.md
 
